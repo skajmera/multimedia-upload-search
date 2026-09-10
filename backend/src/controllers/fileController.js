@@ -13,39 +13,20 @@ function parseTags(raw) {
     .filter(Boolean);
 }
 
-function streamUpload(buffer, options) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-    stream.end(buffer);
-  });
-}
-
 const uploadFile = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new ApiError(400, 'No file provided (use the "file" form field)');
   }
 
-  const fileType = categoryFor(req.file.mimetype);
-
-  let uploadResult;
-  try {
-    uploadResult = await streamUpload(req.file.buffer, {
-      folder: 'multimedia-search',
-      resource_type: cloudinaryResourceType(fileType),
-    });
-  } catch (err) {
-    throw new ApiError(502, `Cloudinary upload failed: ${err.message}`);
-  }
-
+  // req.file.url / .publicId / .size come from CloudinaryStreamStorage
+  // (src/middleware/upload.js), which streams the upload directly to
+  // Cloudinary rather than buffering it here first.
   const file = await File.create({
     owner: req.user._id,
     fileName: req.body.fileName || req.file.originalname,
-    url: uploadResult.secure_url,
-    publicId: uploadResult.public_id,
-    fileType,
+    url: req.file.url,
+    publicId: req.file.publicId,
+    fileType: categoryFor(req.file.mimetype),
     mimeType: req.file.mimetype,
     size: req.file.size,
     tags: parseTags(req.body.tags),
