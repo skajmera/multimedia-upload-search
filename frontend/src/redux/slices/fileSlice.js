@@ -32,6 +32,21 @@ export const searchFiles = createAsyncThunk(
   }
 );
 
+// Hitting GET /files/:id is what actually increments the server-side view
+// count (search results themselves don't bump it) — call this when the user
+// opens a file, not just when it appears in a results list.
+export const viewFile = createAsyncThunk(
+  'files/view',
+  async (id, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/files/${id}`);
+      return data.file;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to open file');
+    }
+  }
+);
+
 const initialState = {
   results: [],
   total: 0,
@@ -76,6 +91,10 @@ const fileSlice = createSlice({
       .addCase(uploadFile.rejected, (state, action) => {
         state.uploadStatus = 'failed';
         state.uploadError = action.payload;
+      })
+      .addCase(viewFile.fulfilled, (state, action) => {
+        const index = state.results.findIndex((f) => f._id === action.payload._id);
+        if (index !== -1) state.results[index] = action.payload;
       });
   },
 });

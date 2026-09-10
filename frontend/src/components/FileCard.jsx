@@ -1,9 +1,13 @@
+import { useDispatch } from 'react-redux';
 import FilePreview from './FilePreview';
+import { viewFile } from '../redux/slices/fileSlice';
 
 export default function FileCard({ file }) {
+  const dispatch = useDispatch();
+
   return (
     <div className="file-card">
-      <FilePreview file={file} />
+      <FilePreview file={file} onView={() => dispatch(viewFile(file._id))} />
       <div className="file-card__meta">
         <h3 title={file.fileName}>{file.fileName}</h3>
         <div className="file-card__tags">

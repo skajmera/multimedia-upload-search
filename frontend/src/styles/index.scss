@@ -182,6 +182,10 @@ button {
     object-fit: cover;
   }
 
+  &--image {
+    cursor: pointer;
+  }
+
   &--audio {
     width: 100%;
     padding: 1rem;
