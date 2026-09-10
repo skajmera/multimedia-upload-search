@@ -4,6 +4,10 @@ A full-stack app for uploading multimedia files (images, videos, audio, PDFs) wi
 authentication, keyword search, and relevance ranking. Built for the Adsiduous/Santa
 Browser technical assessment.
 
+**Live demo:** https://multimedia-upload-search-frontend.vercel.app
+**API:** https://multimedia-search-api.vercel.app (Swagger at `/api-docs`)
+**Repo:** https://github.com/skajmera/multimedia-upload-search
+
 ## Stack
 
 - **Frontend:** React (Hooks) + Redux Toolkit + SCSS, built with Vite
@@ -115,19 +119,32 @@ Deployed as two separate Vercel projects from this repo (GitHub source:
 https://github.com/skajmera/multimedia-upload-search):
 
 - **Frontend:** https://multimedia-upload-search-frontend.vercel.app
-- **Backend:** https://backend-snowy-alpha-78.vercel.app
+- **Backend / API:** https://multimedia-search-api.vercel.app
 
-The backend is deployed via Vercel's "services" framework
-(`backend/vercel.json`), which runs `src/server.js` as a normal persistent
-process (not a classic per-request serverless function) — the same
-`app.listen()` entrypoint used locally, with no code changes. Since this is
-an always-on process rather than a stateless function, the request-body-size
-caps that apply to classic Vercel serverless functions (~4.5MB) are not
-expected to apply here, but that hasn't been exercised with a large
-video/audio upload yet. `src/config/db.js` caches the Mongoose connection
-so the process doesn't reconnect per request. If this Vercel "services" path
-ever proves unreliable, Railway or Render are a drop-in alternative with no
-code changes — same `npm install` / `npm start`, see `backend/Procfile`.
+Verified end to end against the live deployment: register → login →
+upload (streamed to a real Cloudinary account) → search → view-count
+increment → delete.
+
+The backend runs as a classic Vercel serverless function: `backend/api/index.js`
+wraps the Express app (from `src/app.js`) as a single request handler, and
+`backend/vercel.json` uses Vercel's legacy explicit `builds`/`routes` config
+(`@vercel/node`, routing every path to that one function) rather than
+zero-config framework auto-detection. That auto-detection turned out to be
+unreliable here — Vercel's CLI kept defaulting an Express-shaped root
+directory to its newer "services" preset (an always-on-process mode), which
+deployed successfully but never actually routed external traffic to the
+process (0 requests logged). The explicit `builds`/`routes` config sidesteps
+that entirely. `src/config/db.js` caches the Mongoose connection across warm
+invocations so the function doesn't reconnect per request.
+
+**Known caveat:** as a classic serverless function, this deployment inherits
+Vercel's ~4.5MB request body cap — video/audio files above that size will
+fail to upload here even though the app's own configured limit is 25MB.
+Images and PDFs under ~4.5MB work fine (verified above). If large media
+uploads matter for evaluation, redeploy `backend/` to Railway or Render
+instead (both run Express as a normal always-on process with no such cap) —
+no code changes needed beyond the standard `npm install` / `npm start`, see
+`backend/Procfile`.
 
 ### Redeploying
 
