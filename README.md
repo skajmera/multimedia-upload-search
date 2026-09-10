@@ -111,36 +111,40 @@ Full request/response schemas are in Swagger at `/api-docs`.
 
 ## Deployment
 
-**Frontend on Vercel, backend on Railway or Render.** Vercel serverless
-functions cap request bodies at ~4.5MB, which breaks video/audio uploads under
-this app's design (the backend streams the raw upload straight through to
-Cloudinary — see `backend/src/middleware/upload.js`). Railway/Render run the
-Express server as a normal always-on process, so there's no such limit; the
-task's own deliverables list Vercel/Railway as interchangeable examples, not a
-requirement, so this sidesteps the issue entirely rather than needing to
-rework the upload flow into a direct-from-browser-to-Cloudinary scheme.
+Deployed as two separate Vercel projects from this repo:
 
-### Backend → Railway (or Render)
+- **Frontend:** https://multimedia-upload-search-frontend-mssga3ko1.vercel.app
+- **Backend:** deployed from `backend/` as a Vercel serverless function
+  (`backend/api/index.js` wraps the Express app; `backend/vercel.json`
+  rewrites every path to it; `src/config/db.js` caches the Mongoose
+  connection across warm invocations instead of reconnecting per request).
 
-1. Create a new project from this repo, with **root directory set to `backend/`**.
-2. Set environment variables in the platform's dashboard: `MONGO_URI`,
-   `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLOUDINARY_CLOUD_NAME`,
-   `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NODE_ENV=production`, and
-   `CLIENT_ORIGIN` (set this once you have the Vercel URL, e.g.
-   `https://your-app.vercel.app`).
-3. Build command: `npm install`. Start command: `npm start` (also declared in
-   `backend/Procfile` for platforms that read one).
-4. After deploy, confirm `https://<your-backend-url>/health` returns
-   `{"success":true,"status":"ok"}` and `/api-docs` loads Swagger.
+**Caveat:** Vercel serverless functions cap request bodies at ~4.5MB. This
+app streams uploads straight through to Cloudinary (`backend/src/middleware/upload.js`)
+rather than buffering them, but the 4.5MB cap is enforced by Vercel before
+the function even runs — so video/audio files above that size will fail to
+upload on this deployment, even though the app's own configured limit is
+25MB. Images and PDFs under ~4.5MB work fine. If large media uploads matter
+for evaluation, the backend can instead be redeployed to Railway or Render
+(both run Express as a normal always-on process with no such cap) with no
+code changes beyond the standard `npm install` / `npm start` — see
+`backend/Procfile`.
 
-### Frontend → Vercel
+### Redeploying
 
-1. Import this repo into Vercel with **root directory set to `frontend/`**
-   (Vercel auto-detects the Vite build; build command `npm run build`, output
-   `dist`).
-2. Set the environment variable `VITE_API_BASE_URL` to your deployed backend's
-   API base, e.g. `https://your-backend.up.railway.app/api`.
-3. Redeploy after setting env vars (Vite inlines them at build time, so a
-   later change needs a rebuild, not just a restart).
-4. Update the backend's `CLIENT_ORIGIN` to the resulting `https://*.vercel.app`
-   URL so CORS allows it.
+```bash
+# Frontend
+cd frontend && vercel deploy --prod
+
+# Backend
+cd backend && vercel deploy --prod
+```
+
+### Required environment variables
+
+Frontend (`VITE_API_BASE_URL`) and backend (`MONGO_URI`, `JWT_SECRET`,
+`JWT_EXPIRES_IN`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
+`CLOUDINARY_API_SECRET`, `CLIENT_ORIGIN`) must be set in each Vercel
+project's dashboard (Settings → Environment Variables) before the app will
+actually connect to a database or accept uploads — see `.env.example` in
+each folder for what's needed.
