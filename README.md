@@ -111,24 +111,23 @@ Full request/response schemas are in Swagger at `/api-docs`.
 
 ## Deployment
 
-Deployed as two separate Vercel projects from this repo:
+Deployed as two separate Vercel projects from this repo (GitHub source:
+https://github.com/skajmera/multimedia-upload-search):
 
-- **Frontend:** https://multimedia-upload-search-frontend-mssga3ko1.vercel.app
-- **Backend:** deployed from `backend/` as a Vercel serverless function
-  (`backend/api/index.js` wraps the Express app; `backend/vercel.json`
-  rewrites every path to it; `src/config/db.js` caches the Mongoose
-  connection across warm invocations instead of reconnecting per request).
+- **Frontend:** https://multimedia-upload-search-frontend.vercel.app
+- **Backend:** https://backend-snowy-alpha-78.vercel.app
 
-**Caveat:** Vercel serverless functions cap request bodies at ~4.5MB. This
-app streams uploads straight through to Cloudinary (`backend/src/middleware/upload.js`)
-rather than buffering them, but the 4.5MB cap is enforced by Vercel before
-the function even runs — so video/audio files above that size will fail to
-upload on this deployment, even though the app's own configured limit is
-25MB. Images and PDFs under ~4.5MB work fine. If large media uploads matter
-for evaluation, the backend can instead be redeployed to Railway or Render
-(both run Express as a normal always-on process with no such cap) with no
-code changes beyond the standard `npm install` / `npm start` — see
-`backend/Procfile`.
+The backend is deployed via Vercel's "services" framework
+(`backend/vercel.json`), which runs `src/server.js` as a normal persistent
+process (not a classic per-request serverless function) — the same
+`app.listen()` entrypoint used locally, with no code changes. Since this is
+an always-on process rather than a stateless function, the request-body-size
+caps that apply to classic Vercel serverless functions (~4.5MB) are not
+expected to apply here, but that hasn't been exercised with a large
+video/audio upload yet. `src/config/db.js` caches the Mongoose connection
+so the process doesn't reconnect per request. If this Vercel "services" path
+ever proves unreliable, Railway or Render are a drop-in alternative with no
+code changes — same `npm install` / `npm start`, see `backend/Procfile`.
 
 ### Redeploying
 
